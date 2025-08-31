@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AJ - Secret AI</title>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #292828 url('https://wallpapercave.com/wp/wp9460715.jpg') no-repeat center center fixed;
+      background-size: cover;
+      font-family: 'Roboto', sans-serif;
+      color: #e0e0e0;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .chat-container {
+      width: 90%;
+      max-width: 450px;
+      height: 700px;
+      background: rgba(22, 22, 22, 0.9);
+      border-radius: 16px;
+      border: 1px solid #333;
+      box-shadow: 0 0 25px rgba(0, 0, 0, 0.8);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .chat-header {
+      background: rgba(0, 0, 0, 0.7);
+      color: #ff69b4;
+      padding: 15px;
+      text-align: center;
+      font-weight: bold;
+      font-size: 18px;
+      border-bottom: 1px solid #444;
+    }
+
+    .chat-messages {
+      flex: 1;
+      padding: 15px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: rgba(0, 0, 0, 0.4);
+    }
+
+    .message {
+      max-width: 85%;
+      padding: 12px 16px;
+      border-radius: 12px;
+      line-height: 1.6;
+      word-wrap: break-word;
+      font-size: 15px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+
+    .user {
+      align-self: flex-end;
+      background: #00ffff;
+      color: #111;
+      border-bottom-right-radius: 5px;
+    }
+
+    .bot {
+      align-self: flex-start;
+      background: #222;
+      color: #fff;
+      border-bottom-left-radius: 5px;
+    }
+
+    .bot::before {
+      content: "AJ: ";
+      font-weight: bold;
+      color: #00ffcc;
+    }
+
+    .user::before {
+      content: "You: ";
+      font-weight: bold;
+      color: #000;
+    }
+
+    .chat-input {
+      display: flex;
+      padding: 12px;
+      background: rgba(0, 0, 0, 0.6);
+      border-top: 1px solid #444;
+    }
+
+    .chat-input input {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      background: #333;
+      color: #fff;
+      font-family: 'Roboto', sans-serif;
+      outline: none;
+      font-size: 15px;
+    }
+
+    .chat-input button {
+      margin-left: 10px;
+      padding: 10px 16px;
+      border: none;
+      background: #ff69b4;
+      color: white;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: 0.3s;
+    }
+
+    .chat-input button:hover {
+      background: #ff5ca8;
+      transform: scale(1.05);
+    }
+
+    /* Scrollbar */
+    .chat-messages::-webkit-scrollbar { width: 6px; }
+    .chat-messages::-webkit-scrollbar-track { background: #111; }
+    .chat-messages::-webkit-scrollbar-thumb {
+      background: #ff69b4;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-container">
+    <div class="chat-header">
+      AJ - Secret AI
+    </div>
+    <div class="chat-messages" id="chatMessages">
+      <div class="message bot">
+        हाय भाई! मैं AJ हूँ।<br><br> 😎
+      </div>
+    </div>
+    <div class="chat-input">
+      <input type="text" id="userInput" placeholder="कोई भी टॉपिक पूछो..." />
+      <button onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
+    </div>
+  </div>
+
+  <script>
+    const BACKEND_URL = "https://aj-backend-79nl.onrender.com/chat";
+
+    async function sendMessage() {
+      const input = document.getElementById("userInput");
+      const message = input.value.trim();
+      if (!message) return;
+
+      addMessage(message, "user");
+      input.value = "";
+
+      const botMsg = addMessage("⏳ AJ सोच रहा है...", "bot");
+
+      try {
+        const response = await fetch(BACKEND_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "deepseek/deepseek-chat-v3.1:free",
+            messages: [
+              {
+                role: "system",
+                content: "You are AJ, created by Ayush. ✅ हमेशा अगर कोई creator पूछे तो बताओ कि तुम्हारा creator Ayush है। ✅ Reply Hinglish में दो। ✅ Step-by-step explain karo, bullets use karo, aur tone friendly + professional rakho."
+              },
+              { role: "user", content: message }
+            ],
+            temperature: 0.7,
+            max_tokens: 800
+          })
+        });
+
+        const data = await response.json();
+        let text = data.choices?.[0]?.message?.content?.trim() || "❌ Error in response";
+
+        botMsg.textContent = text;
+      } catch (error) {
+        console.error("Error:", error);
+        botMsg.textContent = "अरे यार! Server busy है... बाद में try करना। 🚀";
+      }
+    }
+
+    function addMessage(text, sender) {
+      const messagesContainer = document.getElementById("chatMessages");
+      const messageDiv = document.createElement("div");
+      messageDiv.classList.add("message", sender);
+      messageDiv.textContent = text;
+      messagesContainer.appendChild(messageDiv);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      return messageDiv;
+    }
+
+    document.getElementById("userInput").addEventListener("keypress", (e) => {
+      if (e.key === "Enter") sendMessage();
+    });
+  </script>
+</body>
+</html>
