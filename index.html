@@ -1,0 +1,265 @@
+<div style="width:100%; max-width:450px; margin:auto; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <style>
+    /* Same CSS as before (copy paste from previous code) */
+    .chat-wrapper * { box-sizing: border-box; }
+    .chat-wrapper {
+      background: rgba(22, 22, 22, 0.9);
+      border: 1px solid #333;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 0 25px rgba(0, 0, 0, 0.8);
+      display: flex;
+      flex-direction: column;
+      height: 700px;
+    }
+
+    .chat-header {
+      background: rgba(0, 0, 0, 0.7);
+      color: #ff69b4;
+      text-align: center;
+      padding: 15px;
+      font-weight: bold;
+      font-size: 18px;
+    }
+
+    .chat-messages {
+      flex: 1;
+      padding: 15px;
+      overflow-y: auto;
+      background: rgba(0, 0, 0, 0.4);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .chat-message {
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: 14px;
+      line-height: 1.5;
+      max-width: 85%;
+    }
+
+    .chat-message.user {
+      align-self: flex-end;
+      background-color: #00ffff;
+      color: #111;
+      border-bottom-right-radius: 5px;
+    }
+
+    .chat-message.bot {
+      align-self: flex-start;
+      background-color: #222;
+      color: #fff;
+      border-bottom-left-radius: 5px;
+    }
+
+    .chat-message.bot::before {
+      content: "AJ: ";
+      font-weight: bold;
+      color: #00ffcc;
+    }
+
+    .chat-message.user::before {
+      content: "You: ";
+      font-weight: bold;
+      color: #000;
+    }
+
+    .chat-input-area {
+      display: flex;
+      gap: 8px;
+      background: rgba(0, 0, 0, 0.6);
+      border-top: 1px solid #444;
+      padding: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .chat-input-area input[type="text"] {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      background: #333;
+      color: #fff;
+      outline: none;
+    }
+
+    .chat-input-area button {
+      background-color: #ff69b4;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: #fff;
+      cursor: pointer;
+    }
+
+    .chat-input-area button:hover {
+      background-color: #ff5ca8;
+    }
+
+    .chat-image-preview {
+      max-width: 100px;
+      border-radius: 8px;
+      margin-left: 8px;
+    }
+
+    .chat-file-preview {
+      max-width: 150px;
+      background: #444;
+      color: #fff;
+      padding: 5px 10px;
+      border-radius: 8px;
+      margin-left: 8px;
+      font-size: 12px;
+      overflow-wrap: break-word;
+    }
+  </style>
+
+  <div class="chat-wrapper">
+    <div class="chat-header">AJ - Secret AI</div>
+    <div class="chat-messages" id="chatMessages">
+      <div class="chat-message bot">हाय भाई! मैं AJ हूँ। 😎</div>
+    </div>
+
+    <div class="chat-input-area">
+      <!-- Camera upload button -->
+      <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none;" onchange="handleFileSelect(event)">
+      <button onclick="document.getElementById('cameraInput').click()">
+        <i class="fas fa-camera"></i>
+      </button>
+
+      <!-- Document upload button -->
+      <input type="file" id="docInput" accept=".pdf,.doc,.docx,.txt" style="display:none;" onchange="handleFileSelect(event)">
+      <button onclick="document.getElementById('docInput').click()">
+        <i class="fas fa-file-alt"></i>
+      </button>
+
+      <input type="text" id="userInput" placeholder="कोई भी टॉपिक पूछो...">
+      <button onclick="sendMessage()">
+        <i class="fas fa-paper-plane"></i>
+      </button>
+
+      <!-- Preview area for selected file -->
+      <div id="filePreview"></div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/js/all.min.js"></script>
+  <script>
+    let selectedFile = null;
+
+    const BACKEND_URL = "https://aj-backend-79nl.onrender.com/chat";
+
+    async function sendMessage() {
+      const input = document.getElementById("userInput");
+      const msg = input.value.trim();
+
+      // If no message and no file, do nothing
+      if (!msg && !selectedFile) return;
+
+      // Show user message + file preview in chat
+      if (selectedFile) {
+        if (selectedFile.type.startsWith("image/")) {
+          // Image preview message
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            addImageMessage(e.target.result, "user");
+          };
+          reader.readAsDataURL(selectedFile);
+        } else {
+          // Document message with file name
+          addMessage(`Document uploaded: ${selectedFile.name}`, "user");
+        }
+        selectedFile = null;  // clear after send
+        document.getElementById("filePreview").innerHTML = "";
+      }
+
+      if (msg) {
+        addMessage(msg, "user");
+      }
+
+      input.value = "";
+
+      // AJ is thinking message
+      const botMsg = addMessage("⏳ AJ सोच रहा है...", "bot");
+
+      try {
+        const response = await fetch(BACKEND_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "deepseek/deepseek-chat-v3.1:free",
+            messages: [
+              {
+                role: "system",
+                content: "You are AJ, created by Ayush. ✅ हमेशा अगर कोई creator पूछे तो बताओ कि तुम्हारा creator Ayush है। ✅ Reply Hinglish में दो। ✅ Step-by-step explain karo, bullets use karo, aur tone friendly + professional rakho."
+              },
+              { role: "user", content: msg }
+            ],
+            temperature: 0.7,
+            max_tokens: 800
+          })
+        });
+
+        const data = await response.json();
+        const reply = data.choices?.[0]?.message?.content?.trim() || "❌ Error in response";
+        botMsg.innerHTML = reply.replace(/\n/g, "<br>");
+      } catch (err) {
+        botMsg.textContent = "अरे यार! Server busy है... बाद में try करना। 🚀";
+      }
+    }
+
+    function addMessage(text, sender) {
+      const msgDiv = document.createElement("div");
+      msgDiv.className = `chat-message ${sender}`;
+      msgDiv.textContent = text;
+      document.getElementById("chatMessages").appendChild(msgDiv);
+      document.getElementById("chatMessages").scrollTop = document.getElementById("chatMessages").scrollHeight;
+      return msgDiv;
+    }
+
+    function addImageMessage(src, sender) {
+      const img = document.createElement("img");
+      img.src = src;
+      img.className = "chat-image-preview";
+
+      const wrapper = document.createElement("div");
+      wrapper.className = `chat-message ${sender}`;
+      wrapper.appendChild(img);
+
+      document.getElementById("chatMessages").appendChild(wrapper);
+      document.getElementById("chatMessages").scrollTop = document.getElementById("chatMessages").scrollHeight;
+      return wrapper;
+    }
+
+    function handleFileSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      selectedFile = file;
+
+      // Show preview in input area next to buttons
+      const preview = document.getElementById("filePreview");
+      preview.innerHTML = ""; // clear old preview
+
+      if (file.type.startsWith("image/")) {
+        const img = document.createElement("img");
+        img.src = URL.createObjectURL(file);
+        img.className = "chat-image-preview";
+        preview.appendChild(img);
+      } else {
+        // Show file name for document
+        const div = document.createElement("div");
+        div.className = "chat-file-preview";
+        div.textContent = file.name;
+        preview.appendChild(div);
+      }
+    }
+
+    document.getElementById("userInput").addEventListener("keypress", function(e) {
+      if (e.key === "Enter") sendMessage();
+    });
+  </script>
+</div>
